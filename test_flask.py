@@ -1,10 +1,10 @@
 from unittest import TestCase
 
 from app import app
-from models import db, User
+from models import db, User, Post
 
 # Use test database and don't clutter tests with SQL
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql:///sql_intro_test'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql:///blogly_test'
 app.config['SQLALCHEMY_ECHO'] = False
 
 # Make Flask errors be real errors, rather than HTML pages with error info
@@ -30,6 +30,15 @@ class UserViewsTestCase(TestCase):
         db.session.commit()
         self.user_id = user.id
 
+        """Add sample Post."""
+
+        Post.query.delete()
+
+        post = Post(title="Test Post", content="new test post", user = user)
+        db.session.add(post)
+        db.session.commit()
+        self.post_id = post.id
+
 
     def tearDown(self):
         """Clean up any fouled transaction."""
@@ -43,6 +52,7 @@ class UserViewsTestCase(TestCase):
 
             self.assertEqual(resp.status_code, 200)
             self.assertIn('John Smith', html)
+            self.assertIn('Test Post', html)
 
 
     def test_show_user(self):
@@ -62,3 +72,24 @@ class UserViewsTestCase(TestCase):
 
             self.assertEqual(resp.status_code, 200)
             self.assertIn("<h1>John2 Smith2</h1>", html)
+
+
+    def test_show_post(self):
+        with app.test_client() as client:
+            resp = client.get(f"/posts/{self.post_id}")
+            html = resp.get_data(as_text=True)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn('<h1>Test Post</h1>', html)
+            self.assertIn('<p>new test post</p>', html)
+
+
+    def test_show_edit_form_post(self):
+        with app.test_client() as client:
+            resp = client.get(f"/posts/{self.post_id}/edit")
+            html = resp.get_data(as_text=True)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn('<h1>Edit Post</h1>', html)
+
+
